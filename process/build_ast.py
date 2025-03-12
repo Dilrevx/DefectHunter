@@ -6,15 +6,16 @@ import numpy as np
 from graphviz import Digraph
 from tree_sitter import Parser, Tree
 from tree_sitter import Language
+import tree_sitter_c as tsc
 
-project_name = "ffmpeg/"
+project_name = "FFmpeg/"
 task = "test"
-C_LANGUAGE = Language(os.path.join(__file__, "../build/my-languages.so"), "c")
+C_LANGUAGE = Language(tsc.language())
 
 
 def source_to_ast(source: str):
-    parser = Parser()
-    parser.set_language(C_LANGUAGE)
+    parser = Parser(C_LANGUAGE)
+    # parser.set_language(C_LANGUAGE) # used in tree-sitter 0.20
     ast_node_obj = parser.parse(source.encode())
     return ast_node_obj
 
@@ -89,7 +90,7 @@ def write_dot(dot_list: list):
 
 if __name__ == "__main__":
     # Step1. Get the code snippets from the .jsonl file.
-    code_list = read_source(f"../data/raw/{project_name+task}.jsonl")
+    code_list = read_source(f"data/raw/{project_name+task}.jsonl")
     # code_list = read_source('data/train-qemu.jsonl')
     # Step2. Convert code snippets to AST objects.
     ast_object_list = []
@@ -114,6 +115,8 @@ if __name__ == "__main__":
         matrix_list.append(edges_to_matrix(edges, 200))
     # Step6. Merge numpy matrices into final output.
     merged_matrix = merge_matrix(matrix_list)
-    np.save(f"../data/dataset/{task}_ast.npy", merged_matrix)
+
+    os.makedirs("data/dataset")
+    np.save(f"data/dataset/{task}_ast.npy", merged_matrix)
     print(merged_matrix.shape)
     print("--- End ---")
