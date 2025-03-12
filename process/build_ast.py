@@ -9,7 +9,7 @@ from tree_sitter import Language
 
 project_name = "ffmpeg/"
 task = "test"
-C_LANGUAGE = Language('../build/my-languages.so', 'c')
+C_LANGUAGE = Language(os.path.join(__file__, "../build/my-languages.so"), "c")
 
 
 def source_to_ast(source: str):
@@ -71,23 +71,23 @@ def parse_dot_edges(digraph_object):
 
 def read_source(json_path: str):
     data = []
-    with open(json_path, 'r') as f:
+    with open(json_path, "r") as f:
         for line in f:
-            data.append(json.loads(line)['func'])
+            data.append(json.loads(line)["func"])
     return data
 
 
 def write_dot(dot_list: list):
-    if not os.path.exists('dots'):
-        os.makedirs('dots')
+    if not os.path.exists("dots"):
+        os.makedirs("dots")
     count = 1
     for item in dot_list:
-        with open(f'dots/{count}', 'w') as fs:
+        with open(f"dots/{count}", "w") as fs:
             fs.write(item)
         count = count + 1
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Step1. Get the code snippets from the .jsonl file.
     code_list = read_source(f"../data/raw/{project_name+task}.jsonl")
     # code_list = read_source('data/train-qemu.jsonl')
@@ -114,6 +114,6 @@ if __name__ == '__main__':
         matrix_list.append(edges_to_matrix(edges, 200))
     # Step6. Merge numpy matrices into final output.
     merged_matrix = merge_matrix(matrix_list)
-    np.save(f'../data/dataset/{task}_ast.npy', merged_matrix)
+    np.save(f"../data/dataset/{task}_ast.npy", merged_matrix)
     print(merged_matrix.shape)
-    print('--- End ---')
+    print("--- End ---")
