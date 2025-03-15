@@ -5,16 +5,16 @@ from transformers import RobertaTokenizer
 f_labels = []
 f_codes = []
 codes = []
-project_name = "ffmpeq/"
+project_name = "FFmpeg/"
 # 对非ffmpeg,qemu启用
 # with open(f"../data/raw/{project_name}.jsonl", 'r') as f:
 #     for item in jsonlines.Reader(f):
 #         f_codes.append(item['func'])
 # 对ffmpeg qemu启用
 for task in ["train", "test", "valid"]:
-    with open(f"../data/raw/{project_name+task}.jsonl", 'r') as f:
+    with open(f"data/raw/{project_name+task}.jsonl", "r") as f:
         for item in jsonlines.Reader(f):
-            f_codes.append(item['func'])
+            f_codes.append(item["func"])
 
 # #加载模型
 # tokenizer = RobertaTokenizer.from_pretrained("./process/unx")
@@ -34,5 +34,5 @@ for f_code in f_codes:
 special_tokens_list = list(special_tokens_set)
 # 将special_tokens_list写入文本
 
-with open("../data/dataset/special_tokens_list.txt", 'w') as f:
+with open("data/dataset/special_tokens_list.txt", "w") as f:
     f.writelines(" ".join(str(i) for i in special_tokens_list))

@@ -14,10 +14,10 @@ for x in ["train", "test", "valid"]:
 
     array_list = []
 
-    project_name = "ffmpeg/"
+    project_name = "FFmpeg/"
     task = x
 
-    with open(f"../data/raw/{project_name + task}.jsonl", 'r') as f:
+    with open(f"data/raw/{project_name + task}.jsonl", "r") as f:
         func_list = f.readlines()
 
     for i in range(0, len(func_list)):
@@ -29,4 +29,4 @@ for x in ["train", "test", "valid"]:
         array_list.append(max_func_embedding)
         print(len(array_list))
 
-    np.save(f"../data/dataset/{task}_emb.npy", np.stack(array_list))
+    np.save(f"data/dataset/{task}_emb.npy", np.stack(array_list))

@@ -3,18 +3,30 @@ import json
 import numpy as np
 import torch
 from tree_sitter import Language, Parser
+import tree_sitter_c as tsc
 
-project_name = "ffmpeg/"
+project_name = "FFmpeg/"
 task = "test"
 
-C_LANGUAGE = Language('../build/my-languages.so', 'c')
-parser = Parser()
-parser.set_language(C_LANGUAGE)
+C_LANGUAGE = Language(tsc.language())
+parser = Parser(C_LANGUAGE)
+# parser.set_language(C_LANGUAGE)
 
-case_statement = ['case_statement']
-non_case_statement = ['labeled_statement', 'compound_statement', 'expression_statement', 'if_statement',
-                      'switch_statement', 'do_statement', 'while_statement', 'for_statement', 'return_statement',
-                      'break_statement', 'continue_statement', 'goto_statement']
+case_statement = ["case_statement"]
+non_case_statement = [
+    "labeled_statement",
+    "compound_statement",
+    "expression_statement",
+    "if_statement",
+    "switch_statement",
+    "do_statement",
+    "while_statement",
+    "for_statement",
+    "return_statement",
+    "break_statement",
+    "continue_statement",
+    "goto_statement",
+]
 
 
 class Node(object):
@@ -74,23 +86,23 @@ def analyze_if(node, code):
     if_node = Node((-1, -1), (-1, -1))
     has_else = False
     for child in node.children:
-        if child.type in ['if', 'parenthesized_expression']:
+        if child.type in ["if", "parenthesized_expression"]:
             if if_node.start_point == (-1, -1):
                 if_node.start_point = child.start_point
             if_node.end_point = child.end_point
             continue
-        if child.type == 'else':
+        if child.type == "else":
             has_else = True
             continue
         next_node = find_head(get_control_flow(child, code))
         if next_node is None:
             next_node = Node((-1, -1), (-1, -1))
-            next_node.code = 'Empty node'
+            next_node.code = "Empty node"
         if_node.next.append(next_node)
         if_node.next = list(set(if_node.next))
     if not has_else:
         empty = Node((-1, -1), (-1, -1))
-        empty.code = 'Empty node'
+        empty.code = "Empty node"
         if_node.next.append(empty)
         if_node.next = list(set(if_node.next))
     if_node.code = index_to_code_token((if_node.start_point, if_node.end_point), code)
@@ -100,7 +112,7 @@ def analyze_if(node, code):
 def analyze_while(node, code):
     while_node = Node((-1, -1), (-1, -1))
     for child in node.children:
-        if child.type in ['while', 'parenthesized_expression']:
+        if child.type in ["while", "parenthesized_expression"]:
             if while_node.start_point == (-1, -1):
                 while_node.start_point = child.start_point
             while_node.end_point = child.end_point
@@ -108,10 +120,12 @@ def analyze_while(node, code):
         next_node = find_head(get_control_flow(child, code))
         if next_node is None:
             next_node = Node((-1, -1), (-1, -1))
-            next_node.code = 'Empty node'
+            next_node.code = "Empty node"
         while_node.next.append(next_node)
         while_node.next = list(set(while_node.next))
-    while_node.code = index_to_code_token((while_node.start_point, while_node.end_point), code)
+    while_node.code = index_to_code_token(
+        (while_node.start_point, while_node.end_point), code
+    )
     return while_node
 
 
@@ -120,18 +134,18 @@ def analyze_do_while(node, code):
     while_node = Node((-1, -1), (-1, -1))
     body = None
     for child in node.children:
-        if child.type == 'do':
+        if child.type == "do":
             if do_node.start_point == (-1, -1):
                 do_node.start_point = child.start_point
             do_node.end_point = child.end_point
             continue
-        if body is None and child.type != 'parenthesized_expression':
+        if body is None and child.type != "parenthesized_expression":
             body = find_head(get_control_flow(child, code))
             if body is None:
                 body = Node((-1, -1), (-1, -1))
-                body.code = 'Empty node'
+                body.code = "Empty node"
             continue
-        if child.type in ['while', 'parenthesized_expression', ';']:
+        if child.type in ["while", "parenthesized_expression", ";"]:
             if while_node.start_point == (-1, -1):
                 while_node.start_point = child.start_point
             while_node.end_point = child.end_point
@@ -139,7 +153,9 @@ def analyze_do_while(node, code):
     do_node.next.append(body)
     body.next.append(while_node)
     do_node.code = index_to_code_token((do_node.start_point, do_node.end_point), code)
-    while_node.code = index_to_code_token((while_node.start_point, while_node.end_point), code)
+    while_node.code = index_to_code_token(
+        (while_node.start_point, while_node.end_point), code
+    )
     return do_node
 
 
@@ -154,17 +170,19 @@ def analyze_for(node, code):
         next_node = find_head(get_control_flow(child, code))
         if next_node is None:
             next_node = Node((-1, -1), (-1, -1))
-            next_node.code = 'Empty node'
+            next_node.code = "Empty node"
         condition.next.append(next_node)
         condition.next = list(set(condition.next))
-    condition.code = index_to_code_token((condition.start_point, condition.end_point), code)
+    condition.code = index_to_code_token(
+        (condition.start_point, condition.end_point), code
+    )
     return condition
 
 
 def analyze_switch(node, code):
     condition = Node((-1, -1), (-1, -1))
     for child in node.children:
-        if child.type in ['switch', 'parenthesized_expression']:
+        if child.type in ["switch", "parenthesized_expression"]:
             if condition.start_point == (-1, -1):
                 condition.start_point = child.start_point
             condition.end_point = child.end_point
@@ -172,12 +190,14 @@ def analyze_switch(node, code):
         next_node = get_control_flow(child, code, is_switch_body=True)
         if next_node is None:
             next_node = Node((-1, -1), (-1, -1))
-            next_node.code = 'Empty node'
+            next_node.code = "Empty node"
         if not isinstance(next_node, list):
             next_node = [next_node]
         condition.next.extend(next_node)
         condition.next = list(set(condition.next))
-    condition.code = index_to_code_token((condition.start_point, condition.end_point), code)
+    condition.code = index_to_code_token(
+        (condition.start_point, condition.end_point), code
+    )
     return condition
 
 
@@ -189,42 +209,48 @@ def analyze_case(node, code):
             if condition.start_point == (-1, -1):
                 condition.start_point = child.start_point
             condition.end_point = child.end_point
-            if child.type == ':':
+            if child.type == ":":
                 flag = 1
             continue
         next_node = find_head(get_control_flow(child, code))
         if next_node is None:
             next_node = Node((-1, -1), (-1, -1))
-            next_node.code = 'Empty node'
+            next_node.code = "Empty node"
         condition.next.append(next_node)
         condition.next = list(set(condition.next))
-    condition.code = index_to_code_token((condition.start_point, condition.end_point), code)
+    condition.code = index_to_code_token(
+        (condition.start_point, condition.end_point), code
+    )
     return condition
 
 
 def get_control_flow(root_node, code, is_switch_body=False):
-    if (len(root_node.children) == 0 or root_node.type == 'string') and root_node.type != 'comment':
+    if (
+        len(root_node.children) == 0 or root_node.type == "string"
+    ) and root_node.type != "comment":
         return None
     else:
         if root_node.start_point[0] == root_node.end_point[0]:
             node = Node(root_node.start_point, root_node.end_point)
-            node.code = index_to_code_token((root_node.start_point, root_node.end_point), code)
+            node.code = index_to_code_token(
+                (root_node.start_point, root_node.end_point), code
+            )
             return node
         nodes = []
         for child in root_node.children:
-            if child.type == 'if_statement':
+            if child.type == "if_statement":
                 nodes.append(analyze_if(child, code))
-            elif child.type == 'while_statement':
+            elif child.type == "while_statement":
                 nodes.append(analyze_while(child, code))
-            elif child.type == 'do_statement':
+            elif child.type == "do_statement":
                 nodes.append(analyze_do_while(child, code))
-            elif child.type == 'for_statement':
+            elif child.type == "for_statement":
                 nodes.append(analyze_for(child, code))
-            elif child.type == 'switch_statement':
+            elif child.type == "switch_statement":
                 nodes.append(analyze_switch(child, code))
-            elif child.type == 'case_statement':
+            elif child.type == "case_statement":
                 nodes.append(analyze_case(child, code))
-            elif child.type in ['{', '}']:
+            elif child.type in ["{", "}"]:
                 continue
             else:
                 next_node = find_head(get_control_flow(child, code))
@@ -238,7 +264,9 @@ def get_control_flow(root_node, code, is_switch_body=False):
 
 
 def tree_to_token_index(root_node):
-    if (len(root_node.children) == 0 or root_node.type == 'string') and root_node.type != 'comment':
+    if (
+        len(root_node.children) == 0 or root_node.type == "string"
+    ) and root_node.type != "comment":
         return [(root_node.start_point, root_node.end_point)]
     else:
         code_tokens = []
@@ -251,13 +279,13 @@ def index_to_code_token(index, code):
     start_point = index[0]
     end_point = index[1]
     if start_point[0] == end_point[0]:
-        s = code[start_point[0]][start_point[1]:end_point[1]]
+        s = code[start_point[0]][start_point[1] : end_point[1]]
     else:
         s = ""
-        s += code[start_point[0]][start_point[1]:] + ' \n '
+        s += code[start_point[0]][start_point[1] :] + " \n "
         for i in range(start_point[0] + 1, end_point[0]):
-            s += code[i].strip() + ' \n '
-        s += code[end_point[0]][:end_point[1]].strip()
+            s += code[i].strip() + " \n "
+        s += code[end_point[0]][: end_point[1]].strip()
     return s
 
 
@@ -265,7 +293,7 @@ def get_code_string(code):
     tree = parser.parse(bytes(code, "utf8"))
     root_node = tree.root_node
     tokens_index = tree_to_token_index(root_node)
-    code = code.split('\n')
+    code = code.split("\n")
     code_tokens = []
     last_row = 0
     for index in tokens_index:
@@ -276,21 +304,21 @@ def get_code_string(code):
             cur_code = "\n " + cur_code
         last_row = cur_end_row
         code_tokens.append(cur_code)
-    return ' '.join(code_tokens)
+    return " ".join(code_tokens)
 
 
 def get_token_position(node, code_line):
     line_id = int(node.start_point[0])
     start_pos = int(node.start_point[1])
     end_pos = int(node.end_point[1])
-    token_num = len(node.code.split(' '))
+    token_num = len(node.code.split(" "))
     before_num = line_id
     for i in range(line_id):
         line = code_line[i].strip()
-        before_num += len(line.split(' '))
+        before_num += len(line.split(" "))
     line = code_line[line_id][:start_pos].strip()
     if len(line) != 0:
-        before_num += len(code_line[line_id][:start_pos].strip().split(' '))
+        before_num += len(code_line[line_id][:start_pos].strip().split(" "))
     return before_num, before_num + token_num - 1
 
 
@@ -306,13 +334,22 @@ def get_path(node, code_list, result):
         return result
 
 
-def create_mask(code, token_pos, paths, max_source_length, last_idx, eos_position, statement_path, df_path):
-    code = code.split('\n')
+def create_mask(
+    code,
+    token_pos,
+    paths,
+    max_source_length,
+    last_idx,
+    eos_position,
+    statement_path,
+    df_path,
+):
+    code = code.split("\n")
     mask = torch.zeros((max_source_length, max_source_length), dtype=torch.int)
-    mask[0, :eos_position + 1] = 1
-    mask[:eos_position + 1, 0] = 1
-    mask[eos_position, :eos_position + 1] = 1
-    mask[:eos_position + 1, eos_position] = 1
+    mask[0, : eos_position + 1] = 1
+    mask[: eos_position + 1, 0] = 1
+    mask[eos_position, : eos_position + 1] = 1
+    mask[: eos_position + 1, eos_position] = 1
     for path in paths:
         path_len = len(path)
         for i in range(path_len - 1):
@@ -337,14 +374,16 @@ def create_mask(code, token_pos, paths, max_source_length, last_idx, eos_positio
                         tail_begin, tail_end = token_pos[tail_index]
                         if tail_begin == -1 and tail_end == -1:
                             continue
-                        mask[head_begin: head_end + 1, tail_begin: tail_end + 1] = 1
-                        mask[tail_begin: tail_end + 1, head_begin: head_end + 1] = 1
+                        mask[head_begin : head_end + 1, tail_begin : tail_end + 1] = 1
+                        mask[tail_begin : tail_end + 1, head_begin : head_end + 1] = 1
 
-    mask_statement = torch.zeros((max_source_length, max_source_length), dtype=torch.int)
-    mask_statement[0, :eos_position + 1] = 2
-    mask_statement[:eos_position + 1, 0] = 2
-    mask_statement[eos_position, :eos_position + 1] = 2
-    mask_statement[:eos_position + 1, eos_position] = 2
+    mask_statement = torch.zeros(
+        (max_source_length, max_source_length), dtype=torch.int
+    )
+    mask_statement[0, : eos_position + 1] = 2
+    mask_statement[: eos_position + 1, 0] = 2
+    mask_statement[eos_position, : eos_position + 1] = 2
+    mask_statement[: eos_position + 1, eos_position] = 2
     for node in statement_path:
         node_s, node_e = get_token_position(node, code)
         # node_s += 1
@@ -361,14 +400,14 @@ def create_mask(code, token_pos, paths, max_source_length, last_idx, eos_positio
                 tail_begin, tail_end = token_pos[tail_index]
                 if tail_begin == -1 and tail_end == -1:
                     continue
-                mask_statement[head_begin: head_end + 1, tail_begin: tail_end + 1] = 2
-                mask_statement[tail_begin: tail_end + 1, head_begin: head_end + 1] = 2
+                mask_statement[head_begin : head_end + 1, tail_begin : tail_end + 1] = 2
+                mask_statement[tail_begin : tail_end + 1, head_begin : head_end + 1] = 2
 
     mask_df = torch.zeros((max_source_length, max_source_length), dtype=torch.int)
-    mask_df[0, :eos_position + 1] = 4
-    mask_df[:eos_position + 1, 0] = 4
-    mask_df[eos_position, :eos_position + 1] = 4
-    mask_df[:eos_position + 1, eos_position] = 4
+    mask_df[0, : eos_position + 1] = 4
+    mask_df[: eos_position + 1, 0] = 4
+    mask_df[eos_position, : eos_position + 1] = 4
+    mask_df[: eos_position + 1, eos_position] = 4
 
     for path in df_path:
         if len(path[3]) == 0:
@@ -385,8 +424,8 @@ def create_mask(code, token_pos, paths, max_source_length, last_idx, eos_positio
             tail_begin, tail_end = token_pos[tail_index]
             if tail_begin == -1 and tail_end == -1:
                 continue
-            mask_df[head_begin: head_end + 1, tail_begin: tail_end + 1] = 4
-            mask_df[tail_begin: tail_end + 1, head_begin: head_end + 1] = 4
+            mask_df[head_begin : head_end + 1, tail_begin : tail_end + 1] = 4
+            mask_df[tail_begin : tail_end + 1, head_begin : head_end + 1] = 4
 
     mask = mask + mask_statement + mask_df
     return mask
@@ -395,7 +434,9 @@ def create_mask(code, token_pos, paths, max_source_length, last_idx, eos_positio
 def get_statement(root_node, result, code):
     if root_node.start_point[0] == root_node.end_point[0]:
         node = Node(root_node.start_point, root_node.end_point)
-        node.code = index_to_code_token((root_node.start_point, root_node.end_point), code)
+        node.code = index_to_code_token(
+            (root_node.start_point, root_node.end_point), code
+        )
         result.append(node)
     else:
         for child in root_node.children:
@@ -407,13 +448,13 @@ def if_data_flow(root_node, states, code_line):
     result = []
     other_states = []
     for child in root_node.children:
-        if child.type == 'else':
+        if child.type == "else":
             tag = True
 
     for child in root_node.children:
-        if child.type in ['if', 'else']:
+        if child.type in ["if", "else"]:
             continue
-        if child.type == 'parenthesized_expression' or tag is False:
+        if child.type == "parenthesized_expression" or tag is False:
             tmp, states = get_data_flow(child, states, code_line)
             result.extend(tmp)
         else:
@@ -438,7 +479,7 @@ def if_data_flow(root_node, states, code_line):
 def while_data_flow(root_node, states, code_line):
     result = []
     for child in root_node.children:
-        if child.type == 'while':
+        if child.type == "while":
             continue
         tmp, states = get_data_flow(child, states, code_line)
         result.extend(tmp)
@@ -448,7 +489,7 @@ def while_data_flow(root_node, states, code_line):
 def do_data_flow(root_node, states, code_line):
     result = []
     for child in root_node.children:
-        if child.type in ['while', 'do']:
+        if child.type in ["while", "do"]:
             continue
         tmp, states = get_data_flow(child, states, code_line)
         result.extend(tmp)
@@ -458,7 +499,7 @@ def do_data_flow(root_node, states, code_line):
 def for_data_flow(root_node, states, code_line):
     result = []
     for child in root_node.children:
-        if child.type in ['for', '(', ')']:
+        if child.type in ["for", "(", ")"]:
             continue
         tmp, states = get_data_flow(child, states, code_line)
         result.extend(tmp)
@@ -466,7 +507,9 @@ def for_data_flow(root_node, states, code_line):
 
 
 def find_variable(root_node, code_line):
-    if (len(root_node.children) == 0 or root_node.type == 'string') and root_node.type != 'comment':
+    if (
+        len(root_node.children) == 0 or root_node.type == "string"
+    ) and root_node.type != "comment":
         index = (root_node.start_point, root_node.end_point)
         code = index_to_code_token(index, code_line)
         if root_node.type != code:
@@ -483,7 +526,9 @@ def find_variable(root_node, code_line):
 def declaration_data_flow(root_node, states, code_line):
     result = []
 
-    nodes = [x for x in root_node.child_by_field_name('declarator').children if x.type != ',']
+    nodes = [
+        x for x in root_node.child_by_field_name("declarator").children if x.type != ","
+    ]
     if len(nodes) == 0:
         for child in root_node.children:
             nodes.append(child)
@@ -491,7 +536,7 @@ def declaration_data_flow(root_node, states, code_line):
     right_nodes = []
     flag = False
     for node in nodes:
-        if node.type == '=':
+        if node.type == "=":
             flag = True
             continue
         if flag:
@@ -516,11 +561,11 @@ def declaration_data_flow(root_node, states, code_line):
                 node2 = Node(x[0], x[1])
                 node2.code = code2
                 idx2 = get_token_position(node2, code_line)[0]
-                tmp.append((code1, idx1, 'computedFrom', [idx2]))
+                tmp.append((code1, idx1, "computedFrom", [idx2]))
                 if code2 not in states:
-                    tmp.append((code2, idx2, 'from', []))
+                    tmp.append((code2, idx2, "from", []))
                 else:
-                    tmp.append((code2, idx2, 'from', states[code2]))
+                    tmp.append((code2, idx2, "from", states[code2]))
             states[code1] = [idx1]
             result.extend(tmp)
     if tag is False:
@@ -532,7 +577,7 @@ def declaration_data_flow(root_node, states, code_line):
                 node1 = Node(token1_index[0], token1_index[1])
                 node1.code = code1
                 idx1 = get_token_position(node1, code_line)[0]
-                tmp.append((code1, idx1, 'from', []))
+                tmp.append((code1, idx1, "from", []))
                 states[code1] = [idx1]
             result.extend(tmp)
 
@@ -541,15 +586,19 @@ def declaration_data_flow(root_node, states, code_line):
 
 def assignment_data_flow(root_node, states, code_line):
     result = []
-    left_nodes = [x for x in root_node.child_by_field_name('left').children if x.type != ',']
-    right_nodes = [x for x in root_node.child_by_field_name('right').children if x.type != ',']
+    left_nodes = [
+        x for x in root_node.child_by_field_name("left").children if x.type != ","
+    ]
+    right_nodes = [
+        x for x in root_node.child_by_field_name("right").children if x.type != ","
+    ]
     if len(right_nodes) != len(left_nodes):
-        left_nodes = [root_node.child_by_field_name('left')]
-        right_nodes = [root_node.child_by_field_name('right')]
+        left_nodes = [root_node.child_by_field_name("left")]
+        right_nodes = [root_node.child_by_field_name("right")]
     if len(left_nodes) == 0:
-        left_nodes = [root_node.child_by_field_name('left')]
+        left_nodes = [root_node.child_by_field_name("left")]
     if len(right_nodes) == 0:
-        right_nodes = [root_node.child_by_field_name('right')]
+        right_nodes = [root_node.child_by_field_name("right")]
 
     for node in right_nodes:
         tmp, states = get_data_flow(node, states, code_line)
@@ -569,7 +618,7 @@ def assignment_data_flow(root_node, states, code_line):
                 node2 = Node(x[0], x[1])
                 node2.code = code2
                 idx2 = get_token_position(node2, code_line)[0]
-                tmp.append((code1, idx1, 'computedFrom', [idx2]))
+                tmp.append((code1, idx1, "computedFrom", [idx2]))
             states[code1] = [idx1]
             result.extend(tmp)
     return result, states
@@ -578,32 +627,36 @@ def assignment_data_flow(root_node, states, code_line):
 def get_data_flow(root_node, states, code_line):
     # code: [, , , , ]
     states = states.copy()
-    if (len(root_node.children) == 0 or root_node.type == 'string') and root_node.type != 'comment':
+    if (
+        len(root_node.children) == 0 or root_node.type == "string"
+    ) and root_node.type != "comment":
         node = Node(root_node.start_point, root_node.end_point)
-        code = index_to_code_token((root_node.start_point, root_node.end_point), code_line)
+        code = index_to_code_token(
+            (root_node.start_point, root_node.end_point), code_line
+        )
         node.code = code
         begin, end = get_token_position(node, code_line)
         if root_node.type == code:
             return [], states
         elif code in states:
-            return [(code, begin, 'from', states[code].copy())], states
+            return [(code, begin, "from", states[code].copy())], states
         else:
-            if root_node.type == 'identifier':
+            if root_node.type == "identifier":
                 states[code] = [begin]
-            return [(code, begin, 'from', [])], states
+            return [(code, begin, "from", [])], states
     else:
         result = []
         for child in root_node.children:
-            if child.type == 'if_statement':
+            if child.type == "if_statement":
                 tmp, states = if_data_flow(child, states, code_line)
                 result.extend(tmp)
-            elif child.type == 'while_statement':
+            elif child.type == "while_statement":
                 tmp, states = while_data_flow(child, states, code_line)
                 result.extend(tmp)
-            elif child.type == 'assignment_expression':
+            elif child.type == "assignment_expression":
                 tmp, states = assignment_data_flow(child, states, code_line)
                 result.extend(tmp)
-            elif child.type == 'declaration':
+            elif child.type == "declaration":
                 tmp, states = declaration_data_flow(child, states, code_line)
                 result.extend(tmp)
             else:
@@ -623,9 +676,9 @@ def get_str_code(code):
             code_list[i] = "{" + "\n"
         if code_list[i + 1] == "}" and code_list[i] != "\n":
             code_list[i] += "\n"
-        if code_list[i] == ' ' and code_list[i + 1] == ";":
-            code_list[i] = ''
-    return ''.join(code_list)
+        if code_list[i] == " " and code_list[i + 1] == ";":
+            code_list[i] = ""
+    return "".join(code_list)
 
 
 def create_matrix(df_path):
@@ -668,19 +721,19 @@ def create_matrix(df_path):
 def create_dfs_print_matrix(filename):
     tree = parser.parse(bytes(filename, "utf8"))
     test_root_node = tree.root_node
-    test_nodes = get_control_flow(test_root_node, filename.split('\n'))
+    test_nodes = get_control_flow(test_root_node, filename.split("\n"))
     test_head = find_head(test_nodes)
     code_list = []
     result = []
     result = get_path(test_head, code_list, result)
     statement_result = []
-    get_statement(test_root_node, statement_result, filename.split('\n'))
+    get_statement(test_root_node, statement_result, filename.split("\n"))
     for path in result:
         for node in path:
-            s, e = get_token_position(node, filename.split('\n'))
+            s, e = get_token_position(node, filename.split("\n"))
             node.start = s
             node.end = e
-    df_path, states = get_data_flow(test_root_node, {}, filename.split('\n'))
+    df_path, states = get_data_flow(test_root_node, {}, filename.split("\n"))
     return df_path
 
 
@@ -691,7 +744,9 @@ def find_node_cfg(test_root_node, total_number):
     test_node = test_root_node
     if child_number != 0:
         for i in range(0, child_number):
-            total_number, mask_cfg, mask_cfg_1 = find_node_cfg(test_node.children[i], total_number)
+            total_number, mask_cfg, mask_cfg_1 = find_node_cfg(
+                test_node.children[i], total_number
+            )
     if child_number == 0:
         xx = {total_number: test_node.start_point}
         yy = {test_node.start_point: total_number}
@@ -746,7 +801,9 @@ def create_cfg_matrix():
     return cfg_matrix
 
 
-with open(f"../data/raw/{project_name+task}.jsonl", "r+", encoding="utf8") as f:  # 输入路径
+with open(
+    f"data/raw/{project_name+task}.jsonl", "r+", encoding="utf8"
+) as f:  # 输入路径
     c = f.readlines()
     list_dfg = []
     list_cfg = []
@@ -757,8 +814,10 @@ with open(f"../data/raw/{project_name+task}.jsonl", "r+", encoding="utf8") as f:
         filename = text
         tree = parser.parse(bytes(filename, "utf8"))
         test_root_node = tree.root_node
-        test_nodes = get_control_flow(test_root_node, filename.split('\n'))
-        test_node_number, test_mask_cfg, test_mask_cfg_1 = find_node_cfg(test_root_node, 0)
+        test_nodes = get_control_flow(test_root_node, filename.split("\n"))
+        test_node_number, test_mask_cfg, test_mask_cfg_1 = find_node_cfg(
+            test_root_node, 0
+        )
         cfg_matrix = create_cfg_matrix()
         df_path = create_dfs_print_matrix(filename)
         dfg_matrix = create_matrix(df_path)
@@ -768,5 +827,5 @@ with open(f"../data/raw/{project_name+task}.jsonl", "r+", encoding="utf8") as f:
         list_cfg.append(cfg_matrix)
     print(len(list_dfg))
     print(len(list_cfg))
-    np.save(f'../data/dataset/{task}_cfg.npy', np.stack(list_cfg))  # 输出路径
-    np.save(f'../data/dataset/{task}_dfg.npy', np.stack(list_dfg))
+    np.save(f"data/dataset/{task}_cfg.npy", np.stack(list_cfg))  # 输出路径
+    np.save(f"data/dataset/{task}_dfg.npy", np.stack(list_dfg))
