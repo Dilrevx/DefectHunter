@@ -5,7 +5,8 @@ import torch
 
 from unixcoder import UniXcoder
 
-model = UniXcoder("unx")
+# model = UniXcoder("unx")
+model = UniXcoder("microsoft/unixcoder-base")
 device = torch.device("cuda")
 model.to(device)
 

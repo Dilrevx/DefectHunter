@@ -17,7 +17,8 @@ for task in ["train", "test", "valid"]:
             f_codes.append(item['func'])
 
 # #加载模型
-tokenizer = RobertaTokenizer.from_pretrained("unx")
+# tokenizer = RobertaTokenizer.from_pretrained("./process/unx")
+tokenizer = RobertaTokenizer.from_pretrained("microsoft/unixcoder-base")
 
 # 获取特殊词列表
 count = 0
