@@ -4,3 +4,7 @@ torchvision
 graphviz
 tree-sitter
 tree-sitter-c
+transformers
+jsonlines
+ntlk
+protobuf
