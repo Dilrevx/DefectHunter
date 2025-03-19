@@ -7,8 +7,8 @@ tree-sitter-c
 transformers
 jsonlines
 ntlk
-protobuf
-numpy
-tensorflow
+protobuf==3.20
+numpy<2
+tensorflow==2.7
+keras==2.7
 keras-metrics
-keras
