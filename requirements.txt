@@ -8,3 +8,7 @@ transformers
 jsonlines
 ntlk
 protobuf
+numpy
+tensorflow
+keras-metrics
+keras

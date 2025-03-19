@@ -1,4 +1,5 @@
 import json
+import pickle
 from typing import List
 
 import numpy as np
@@ -14,7 +15,7 @@ Preprocess tokenize. Store in ./data/tokens_ids/{project_name}_{task}.npy
 # 全局配置
 PROJECT_NAME = "FFmpeg"
 MODEL_NAME = "microsoft/unixcoder-base"
-DEVICE = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+DEVICE = torch.device("cpu")
 OUTPUT_DIR = "data/tokens_ids"
 
 model = UniXcoder(MODEL_NAME).to(DEVICE)
@@ -59,7 +60,7 @@ def main_multiprocessing(_, __):
         raw_data = f.readlines()
 
     # 创建进程池（根据CPU核心数调整）
-    num_workers = min(8, cpu_count() - 2)
+    num_workers = min(32, cpu_count() - 2)
     print(f"Processing {len(raw_data)} samples with {num_workers} workers...")
 
     # 不用分割批次，
@@ -80,5 +81,6 @@ if __name__ == "__main__":
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     for task in ["train", "test", "valid"]:
         array_list = main_multiprocessing(model, task)
-        np.save(f"{OUTPUT_DIR}/{PROJECT_NAME}_{task}.npy", np.stack(array_list))
+        # np.save(f"{OUTPUT_DIR}/{PROJECT_NAME}_{task}.npy", np.stack(array_list))
+        pickle.dump(array_list, open(f"{OUTPUT_DIR}/{PROJECT_NAME}/{task}.pkl", "wb"))
         print(f"Saved {PROJECT_NAME}_{task}.npy")

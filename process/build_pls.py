@@ -28,7 +28,7 @@ for task in ["train", "test", "valid"]:
         tokens_embeddings, max_func_embedding = model(source_ids)
         print(f"encoded in {time() - t0:.2f} seconds.")
         max_func_embedding = max_func_embedding.cpu().detach().numpy()
-        print(max_func_embedding.shape)
+        print(max_func_embedding.shape)  # 1, 768
         print(
             f"finished {i + 1}/{len(func_list)} functions in {time() - t0:.2f} seconds."
         )
