@@ -1,11 +1,12 @@
 import collections
 import json
+import os
 import numpy as np
 import torch
 from tree_sitter import Language, Parser
 import tree_sitter_c as tsc
 
-project_name = "FFmpeg/"
+project_name = "FFmpeg"
 task = "test"
 
 C_LANGUAGE = Language(tsc.language())
@@ -756,10 +757,6 @@ def find_node_cfg(test_root_node, total_number):
     return total_number, mask_cfg, mask_cfg_1
 
 
-mask_cfg = {}
-mask_cfg_1 = {}
-
-
 def bl(start, end, matrix):
     for i in range(start, end):
         for j in range(start, end):
@@ -801,31 +798,42 @@ def create_cfg_matrix():
     return cfg_matrix
 
 
-with open(
-    f"data/raw/{project_name+task}.jsonl", "r+", encoding="utf8"
-) as f:  # 输入路径
-    c = f.readlines()
-    list_dfg = []
-    list_cfg = []
-    time = 0
-    for i in c:
-        time += 1
-        text = json.loads(i)["func"].replace("\n", "")
-        filename = text
-        tree = parser.parse(bytes(filename, "utf8"))
-        test_root_node = tree.root_node
-        test_nodes = get_control_flow(test_root_node, filename.split("\n"))
-        test_node_number, test_mask_cfg, test_mask_cfg_1 = find_node_cfg(
-            test_root_node, 0
-        )
-        cfg_matrix = create_cfg_matrix()
-        df_path = create_dfs_print_matrix(filename)
-        dfg_matrix = create_matrix(df_path)
-        # dfg_matrix = np.expand_dims(dfg_matrix, axis=0)
-        # cfg_matrix = np.expand_dims(cfg_matrix, axis=0)
-        list_dfg.append(dfg_matrix)
-        list_cfg.append(cfg_matrix)
-    print(len(list_dfg))
-    print(len(list_cfg))
-    np.save(f"data/dataset/{task}_cfg.npy", np.stack(list_cfg))  # 输出路径
-    np.save(f"data/dataset/{task}_dfg.npy", np.stack(list_dfg))
+def main(project_name, task):
+    global test_root_node, test_mask_cfg_1, mask_cfg_1, mask_cfg
+    mask_cfg_1 = {}
+    mask_cfg = {}
+    with open(
+        f"data/raw/{project_name}/{task}.jsonl", "r+", encoding="utf8"
+    ) as f:  # 输入路径
+        c = f.readlines()
+        list_dfg = []
+        list_cfg = []
+        time = 0
+        for i in c:
+            time += 1
+            text = json.loads(i)["func"].replace("\n", "")
+            filename = text
+            tree = parser.parse(bytes(filename, "utf8"))
+            test_root_node = tree.root_node
+            test_nodes = get_control_flow(test_root_node, filename.split("\n"))
+            test_node_number, test_mask_cfg, test_mask_cfg_1 = find_node_cfg(
+                test_root_node, 0
+            )
+            cfg_matrix = create_cfg_matrix()
+            df_path = create_dfs_print_matrix(filename)
+            dfg_matrix = create_matrix(df_path)
+            # dfg_matrix = np.expand_dims(dfg_matrix, axis=0)
+            # cfg_matrix = np.expand_dims(cfg_matrix, axis=0)
+            list_dfg.append(dfg_matrix)
+            list_cfg.append(cfg_matrix)
+        print(len(list_dfg))
+        print(len(list_cfg))
+        np.save(f"data/dataset/{task}_cfg.npy", np.stack(list_cfg))  # 输出路径
+        np.save(f"data/dataset/{task}_dfg.npy", np.stack(list_dfg))
+
+
+if __name__ == "__main__":
+    for task in ["train", "test", "valid"]:
+        if os.path.exists(f"data/dataset/{task}_cfg.npy"):
+            continue
+        main(project_name, task)

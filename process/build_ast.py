@@ -8,7 +8,7 @@ from tree_sitter import Parser, Tree
 from tree_sitter import Language
 import tree_sitter_c as tsc
 
-project_name = "FFmpeg/"
+project_name = "FFmpeg"
 task = "test"
 C_LANGUAGE = Language(tsc.language())
 
@@ -88,9 +88,9 @@ def write_dot(dot_list: list):
         count = count + 1
 
 
-if __name__ == "__main__":
+def main(project_name: str, task: str):
     # Step1. Get the code snippets from the .jsonl file.
-    code_list = read_source(f"data/raw/{project_name+task}.jsonl")
+    code_list = read_source(f"data/raw/{project_name}/{task}.jsonl")
     # code_list = read_source('data/train-qemu.jsonl')
     # Step2. Convert code snippets to AST objects.
     ast_object_list = []
@@ -116,7 +116,14 @@ if __name__ == "__main__":
     # Step6. Merge numpy matrices into final output.
     merged_matrix = merge_matrix(matrix_list)
 
-    os.makedirs("data/dataset")
+    os.makedirs("data/dataset", exist_ok=True)
     np.save(f"data/dataset/{task}_ast.npy", merged_matrix)
     print(merged_matrix.shape)
     print("--- End ---")
+
+
+if __name__ == "__main__":
+    for task in ["train", "test", "valid"]:
+        if os.path.exists(f"data/dataset/{task}_ast.npy"):
+            continue
+        main(project_name, task)
