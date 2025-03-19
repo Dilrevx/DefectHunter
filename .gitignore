@@ -2,3 +2,4 @@ dots
 data/dataset
 **/__pycache__
 *.log
+model/ck

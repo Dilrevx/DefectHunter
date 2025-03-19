@@ -23,6 +23,8 @@
 ### 修复  
 
 - 精简 `requirements.txt`，原本太多了
+- 在同一个脚本生成 `train, test, valid` 三个数据集，原本需要跑好几次
+- `build_pls` 改成多线程了。原本单线程时通过 UniXcoder 理解静态特征每次需要 3 min 太久了
 
 ### 移除  
 
